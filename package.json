@@ -1,0 +1,34 @@
+{
+  "name": "comment-analysis",
+  "version": "1.0.0",
+  "description": "Code comment rate analysis tool with multi-language support",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "comment-analysis": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "package.json",
+    "README.md",
+    "README.zh-CN.md"
+  ],
+  "scripts": {
+    "start": "node index.js",
+    "test": "node index.js tests"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.3",
+    "commander": "^11.1.0",
+    "glob": "^10.3.10"
+  },
+  "keywords": [
+    "code",
+    "comment",
+    "analysis",
+    "statistics"
+  ],
+  "author": "",
+  "license": "MIT"
+}
