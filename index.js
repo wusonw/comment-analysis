@@ -17,6 +17,7 @@ const LANGUAGES = {
     noSupportedFiles: 'No supported file types found',
     supportedFileTypes: 'Supported file types',
     excludePatterns: 'Exclude patterns',
+    includeExtensions: 'Include specific file extensions',
     analysisFailed: 'Analysis failed',
     pathNotExists: 'Error: Path',
     notExists: 'does not exist',
@@ -51,6 +52,7 @@ const LANGUAGES = {
     pathArgument: 'Path to the folder to analyze',
     verboseOption: 'Show detailed output information',
     excludeOption: 'Exclude file patterns, separated by commas',
+    includeExtOption: 'Only include specific file extensions, separated by commas (e.g., .js,.ts,.vue)',
     langOption: 'Language for output (en/zh-CN)',
 
     // Supported file types message
@@ -64,6 +66,7 @@ const LANGUAGES = {
     noSupportedFiles: '未找到支持的文件类型',
     supportedFileTypes: '支持的文件类型',
     excludePatterns: '排除模式',
+    includeExtensions: '包含特定文件扩展名',
     analysisFailed: '分析文件夹失败',
     pathNotExists: '错误: 路径',
     notExists: '不存在',
@@ -98,6 +101,7 @@ const LANGUAGES = {
     pathArgument: '要分析的文件夹路径',
     verboseOption: '显示详细输出信息',
     excludeOption: '排除的文件模式，用逗号分隔',
+    includeExtOption: '只包含指定的文件扩展名，用逗号分隔 (例如: .js,.ts,.vue)',
     langOption: '输出语言 (en/zh-CN)',
 
     // Supported file types message
@@ -493,7 +497,7 @@ function analyzeFile(filePath) {
 }
 
 // 分析文件夹
-function analyzeDirectory(dirPath, excludePatterns = [], lang = 'en') {
+function analyzeDirectory(dirPath, excludePatterns = [], lang = 'en', includeExtensions = Object.keys(FILE_TYPES)) {
   const results = {}
   const allExtensions = Object.keys(FILE_TYPES)
   const messages = getMessages(lang)
@@ -514,9 +518,15 @@ function analyzeDirectory(dirPath, excludePatterns = [], lang = 'en') {
       })
     })
 
-    console.log(chalk.blue(`${messages.analyzingFiles} ${filteredFiles.length} ${messages.files}...`))
+    // 根据 includeExtensions 进一步过滤
+    const finalFiles = filteredFiles.filter((file) => {
+      const ext = path.extname(file)
+      return includeExtensions.includes(ext)
+    })
 
-    filteredFiles.forEach((file) => {
+    console.log(chalk.blue(`${messages.analyzingFiles} ${finalFiles.length} ${messages.files}...`))
+
+    finalFiles.forEach((file) => {
       const result = analyzeFile(file)
       if (result) {
         const fileType = result.fileType
@@ -701,6 +711,7 @@ function main() {
     .argument('<path>', 'Path to the folder to analyze')
     .option('-v, --verbose', 'Show detailed output information')
     .option('-e, --exclude <patterns>', 'Exclude file patterns, separated by commas', 'node_modules,dist,build,.git')
+    .option('-i, --include-ext <extensions>', 'Only include specific file extensions, separated by commas (e.g., .js,.ts,.vue)')
     .option('-l, --lang <language>', 'Language for output (en/zh-CN)', 'en')
     .action((dirPath, options) => {
       const lang = options.lang || 'en'
@@ -733,7 +744,27 @@ function main() {
         console.log(chalk.blue(`${messages.excludePatterns}: ${excludePatterns.join(', ')}`))
       }
 
-      const results = analyzeDirectory(dirPath, excludePatterns, lang)
+      // 解析包含的文件扩展名
+      let includeExtensions = Object.keys(FILE_TYPES)
+      if (options.includeExt) {
+        const userExtensions = options.includeExt.split(',').map((ext) => ext.trim())
+        // 确保扩展名以 . 开头
+        const normalizedExtensions = userExtensions.map((ext) => (ext.startsWith('.') ? ext : `.${ext}`))
+        // 过滤出用户指定的且支持的文件类型
+        includeExtensions = normalizedExtensions.filter((ext) => FILE_TYPES[ext])
+
+        if (includeExtensions.length === 0) {
+          console.error(chalk.red(`错误: 指定的文件扩展名都不被支持: ${userExtensions.join(', ')}`))
+          console.log(chalk.gray(`支持的文件类型: ${Object.keys(FILE_TYPES).join(', ')}`))
+          process.exit(1)
+        }
+
+        if (options.verbose) {
+          console.log(chalk.blue(`${messages.includeExtensions}: ${includeExtensions.join(', ')}`))
+        }
+      }
+
+      const results = analyzeDirectory(dirPath, excludePatterns, lang, includeExtensions)
 
       if (Object.keys(results).length === 0) {
         console.log(chalk.yellow(messages.noSupportedFiles))
